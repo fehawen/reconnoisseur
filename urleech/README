@@ -1,0 +1,113 @@
+urleech
+----------
+
+Passive URL discovery from historical web archives and external intelligence
+sources.
+
+Queries external datasets for URLs previously observed on a target domain and
+its subdomains.  It does not crawl target websites, make requests to target
+hosts, execute JavaScript, or verify whether discovered URLs are currently
+accessible.
+
+
+Providers
+
+    Providers run automatically.
+
+        - Wayback Machine (CDX)
+        - Common Crawl
+        - AlienVault OTX
+        - urlscan.io
+        - VirusTotal
+
+
+API keys
+
+    Configured through environment variables.
+
+        OTX_API_KEY
+            Optional.  Used when querying AlienVault OTX.
+
+        URLSCAN_API_KEY
+            Optional.  Used for urlscan.io search and result access.
+            Search quotas and historical visibility depend on the account.
+
+        VIRUSTOTAL_API_KEY
+            Required for VirusTotal.  The domain URLs relationship is restricted
+            to Premium API users.  Without an API key the provider is skipped.
+            A non-Premium key may receive an authorization error.
+
+    The following providers do not require API keys:
+
+        - Common Crawl
+        - Wayback Machine
+
+
+Usage
+
+    urleech [options] [domain ...]
+
+
+Options
+
+    -file <path>
+        Read target domains from a file, one domain per line.
+
+    -log <path>
+        Write provider logs to the specified file.
+        Defaults to ./urleech.log.
+
+    -silent
+        Disable application logging.
+
+
+    If neither positional domains nor -file is supplied, urleech reads
+    domains from stdin.
+
+
+Examples
+
+    urleech example.com
+
+    urleech example.com example.org
+
+    urleech -file domains.txt
+
+    printf '%s\n' example.com example.org | urleech
+
+    urleech -silent example.com
+
+    urleech example.com > urls.jsonl
+
+
+Input
+
+    Domains can be supplied in three ways:
+
+        - As positional command-line arguments.
+        - Through a file specified with -file.
+        - Through stdin.
+
+    Input files and stdin accept one domain per line.  Empty lines are ignored.
+
+    The -file option cannot be combined with positional domains.
+
+    Domains are normalized before processing.  Leading and trailing whitespace
+    and a trailing dot are removed, and domain names are converted to lowercase.
+    Invalid domain names cause the application to exit with an error.
+
+
+Output
+
+    Results are written as JSON Lines (JSONL) to stdout. Each line represents
+    one unique URL for a target domain.
+
+    Each record contains:
+
+        - schema_version
+        - domain
+        - url
+        - evidence
+
+    Logs are written to file, separately from the JSONL results, so that stdout
+    can be redirected or piped into other tools.

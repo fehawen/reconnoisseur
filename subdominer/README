@@ -1,0 +1,133 @@
+subdominer
+----------
+
+Passive subdomain discovery from certificate transparency logs, DNS
+intelligence, historical datasets, and external security intelligence sources.
+
+subdominer queries multiple external providers to discover hostnames associated
+with a target domain. Results from the providers are normalized, aggregated,
+and emitted as JSON Lines (JSONL).
+
+The tool does not perform active DNS brute-forcing, port scanning, or direct
+probing of discovered hosts. It relies on information already available from
+external data sources.
+
+
+Providers
+
+    Providers run automatically.
+
+        - Cert Spotter (subdominer)
+        - Common Crawl
+        - crt.name
+        - crt.sh
+        - AlienVault OTX
+        - ProjectDiscovery Chaos
+        - Shodan CT
+        - Shodan DNS
+        - urlscan.io
+        - VirusTotal
+        - Wayback Machine
+
+
+API keys
+
+
+    Configured through environment variables.
+
+        CERTSPOTTER_API_KEY
+            Optional.  Used when querying Cert Spotter.
+
+        OTX_API_KEY
+            Optional.  Used when querying AlienVault OTX.
+
+        PDCP_API_KEY
+            Required for ProjectDiscovery Chaos.  Skipped if key is missing.
+
+        SHODAN_API_KEY
+            Required for Shodan DNS.  Skipped if key is missing.
+
+        URLSCAN_API_KEY
+            Optional.  Used when querying urlscan.io.
+
+        VIRUSTOTAL_API_KEY
+            Required for VirusTotal.  Skipped if key is missing.
+
+
+    The following providers do not require API keys:
+
+        - Common Crawl
+        - crt.name
+        - crt.sh
+        - Shodan CT
+        - Wayback Machine
+
+
+Usage
+
+    subdominer [options] [domain ...]
+
+
+Options
+
+    -file <path>
+        Read target domains from a file, one domain per line.
+
+    -log <path>
+        Write provider logs to the specified file.
+        Defaults to ./subdominer.log.
+
+    -silent
+        Disable application logging.
+
+
+    If neither positional domains nor -file is supplied, subdominer reads
+    domains from stdin.
+
+
+Examples
+
+    subdominer example.com
+
+    subdominer example.com example.org
+
+    subdominer -file domains.txt
+
+    printf '%s\n' example.com example.org | subdominer
+
+    subdominer -silent example.com
+
+    subdominer example.com > results.jsonl
+
+
+Input
+
+    Domains can be supplied in three ways:
+
+        - As positional command-line arguments.
+        - Through a file specified with -file.
+        - Through stdin.
+
+    Input files and stdin accept one domain per line.  Empty lines are ignored.
+
+    The -file option cannot be combined with positional domains.
+
+    Domains are normalized before processing.  Leading and trailing whitespace
+    and a trailing dot are removed, and domain names are converted to lowercase.
+    Invalid domain names cause the application to exit with an error.
+
+
+Output
+
+    Results are written as JSON Lines (JSONL) to stdout. Each line represents
+    one unique URL for a target domain.
+
+    Each record contains:
+
+        - schema_version
+        - domain
+        - url
+        - evidence
+
+    Logs are written to file, separately from the JSONL results, so that stdout
+    can be redirected or piped into other tools.
