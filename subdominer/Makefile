@@ -13,16 +13,9 @@ build:
 install:
 	$(GO) install -ldflags '$(LDFLAGS)' $(CMD)
 
-.PHONY: test
-test:
-	$(GO) test ./...
-
 .PHONY: vet
 vet:
 	$(GO) vet ./...
-
-.PHONY: check
-check: test vet
 
 .PHONY: tidy
 tidy:
