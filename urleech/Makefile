@@ -17,10 +17,6 @@ install:
 vet:
 	$(GO) vet ./...
 
-.PHONY: tidy
-tidy:
-	$(GO) mod tidy
-
 .PHONY: clean
 clean:
 	rm -f $(BINARY)
