@@ -1,0 +1,79 @@
+probator
+---------
+
+An HTTP(S) reachability prober that reads subdominer JSONL from stdin and probes
+each unique hostname.
+
+
+Usage
+
+    probator [options] subdominer-output.jsonl
+
+
+Options
+
+    -workers <count>
+        Concurrent hostnames to probe.
+        Defaults to 20.
+
+    -dns-timeout <duration>
+        DNS lookup timeout.
+        Defaults to 5s.
+
+    -timeout <duration>
+        HTTP request timeout.
+        Defaults to 10s.
+
+    -max-redirects <count>
+        Maximum redirects per request.
+        Defaults to 5.
+
+    -max-body-size <bytes>
+        Maximum response body bytes read.
+        Defaults to 1048576.
+
+    -user-agent <value>
+        HTTP User-Agent.
+        Defaults to reconnoisseur/1.0.
+
+    -log <path>
+        Write logs to the specified file.
+        Defaults to ./probator.log.
+
+    -silent
+        Disable application logging.
+
+
+Examples
+
+    probator < input.jsonl
+
+    subdominer example.org | probator > output.jsonl
+
+
+Input
+
+    probator accepts subdominer schema version 1 JSONL records.  It uses only
+    schema_version, domain, and url. Other fields, such as evidence, are ignored
+    and not retained.
+
+    Hostnames are lowercased and have a trailing DNS root dot removed before
+    deduplication.  Each unique normalized hostname is probed once.  Duplicate
+    records with conflicting normalized domain values are rejected.
+
+    Malformed records, missing required fields, unsupported schema versions, and
+    conflicting domains are fatal input errors.  Blank lines are ignored.
+
+
+Output
+
+    One JSONL record is emitted per unique hostname, in probe-completion order.
+    Each output record retains schema_version, domain, and normalized URL, and
+    adds a top-level probator object containing DNS, HTTP, and HTTPS
+    observations.  The input evidence field is omitted.
+
+    HTTP status codes are observations, not errors.  Responses such as 401, 403,
+    404, and 500 are successful HTTP probes.
+
+    Logs are written to file, separately from the JSONL results, so that stdout
+    can be redirected or piped into other tools.
