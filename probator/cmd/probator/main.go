@@ -91,8 +91,7 @@ func run() error {
 	flag.Parse()
 
 	if flag.NArg() != 0 {
-		fmt.Fprintln(os.Stderr, "probator: positional arguments not supported, provide JSONL on stdin")
-		os.Exit(2)
+		return errors.New("positional arguments not supported, provide JSONL on stdin")
 	}
 
 	cfg.Probe = probeCfg

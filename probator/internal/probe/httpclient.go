@@ -28,6 +28,7 @@ type ipResolver interface {
 
 type transportConfig struct {
 	initialHostname  string
+	scopeDomain      string
 	initialAddresses []net.IPAddr
 	resolver         ipResolver
 	dnsTimeout       time.Duration
@@ -52,6 +53,12 @@ func (e *dnsResolutionError) Unwrap() error {
 func newHTTPClient(cfg transportConfig) (*http.Client, func(), error) {
 	if cfg.initialHostname == "" {
 		return nil, nil, errors.New("initial hostname is empty")
+	}
+
+	cfg.initialHostname = normalizeDNSName(cfg.initialHostname)
+	cfg.scopeDomain = normalizeDNSName(cfg.scopeDomain)
+	if cfg.scopeDomain == "" || !hostnameInScope(cfg.initialHostname, cfg.scopeDomain) {
+		return nil, nil, errors.New("initial hostname is outside the redirect scope")
 	}
 
 	if len(cfg.initialAddresses) == 0 {
@@ -115,7 +122,7 @@ func newHTTPClient(cfg transportConfig) (*http.Client, func(), error) {
 				return http.ErrUseLastResponse
 			}
 
-			if !redirectURLAllowed(req.URL) {
+			if !redirectURLAllowed(req.URL, cfg.scopeDomain) {
 				return http.ErrUseLastResponse
 			}
 
@@ -302,6 +309,20 @@ func uniqueIPAddrs(addresses []net.IPAddr) []net.IPAddr {
 	return out
 }
 
-func redirectURLAllowed(u *url.URL) bool {
-	return u != nil && (u.Scheme == "http" || u.Scheme == "https") && u.User == nil
+func hostnameInScope(hostname, scopeDomain string) bool {
+	return hostname != "" && scopeDomain != "" &&
+		(hostname == scopeDomain || strings.HasSuffix(hostname, "."+scopeDomain))
+}
+
+func redirectURLAllowed(u *url.URL, scopeDomain string) bool {
+	if u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil {
+		return false
+	}
+
+	hostname := normalizeDNSName(u.Hostname())
+	if hostname == "" || scopeDomain == "" {
+		return false
+	}
+
+	return hostnameInScope(hostname, scopeDomain)
 }

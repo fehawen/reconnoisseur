@@ -108,6 +108,7 @@ func (p *URLScanProvider) Query(ctx context.Context, domain string, client *http
 
 	searchAfter := ""
 	detailCount := 0
+	detailsIncomplete := false
 
 	for page := 1; page <= urlScanMaxPages; page++ {
 		endpoint, err := url.Parse(base + "/api/v1/search/")
@@ -145,7 +146,12 @@ func (p *URLScanProvider) Query(ctx context.Context, domain string, client *http
 			add(scan.Task.URL, "scan-target", reference, sourceTime, 0)
 			add(scan.Page.URL, "scan-page", reference, sourceTime, 0)
 
-			if scan.Task.UUID == "" || detailCount >= urlScanMaxDetails {
+			if scan.Task.UUID == "" {
+				continue
+			}
+
+			if detailCount >= urlScanMaxDetails {
+				detailsIncomplete = true
 				continue
 			}
 
@@ -173,27 +179,37 @@ func (p *URLScanProvider) Query(ctx context.Context, domain string, client *http
 			}
 		}
 
-		if len(response.Results) < urlScanPageSize {
-			break
+		hasMore := response.HasMore || response.Total > page*urlScanPageSize
+		if response.Total == 0 && !hasMore {
+			hasMore = len(response.Results) == urlScanPageSize
+		}
+
+		if !hasMore {
+			if detailsIncomplete {
+				return nil, &model.ProviderError{Reason: "detail_limit_reached"}
+			}
+
+			return results, nil
+		}
+
+		if len(response.Results) == 0 {
+			return nil, &model.ProviderError{Reason: "pagination_error", Err: fmt.Errorf("provider reported more results without returning a cursor")}
 		}
 
 		cursor, err := urlScanCursor(response.Results[len(response.Results)-1].Sort)
 		if err != nil {
-			break
+			return nil, &model.ProviderError{Reason: "pagination_error", Err: err}
 		}
 
 		if cursor == searchAfter {
-			break
-		}
-
-		searchAfter = cursor
-		if detailCount >= urlScanMaxDetails {
-			break
+			return nil, &model.ProviderError{Reason: "pagination_error", Err: fmt.Errorf("pagination cursor did not advance")}
 		}
 
 		if page == urlScanMaxPages {
-			break
+			return nil, &model.ProviderError{Reason: "pagination_limit_reached"}
 		}
+
+		searchAfter = cursor
 	}
 
 	return results, nil

@@ -15,6 +15,8 @@ import (
 	"github.com/fehawen/reconnoisseur/internal/shared/provider"
 )
 
+const shodanDNSMaxPages = 100
+
 type ShodanDNSProvider struct {
 	provider.Metadata
 	BaseURL string
@@ -67,7 +69,7 @@ func (p *ShodanDNSProvider) Query(
 	results := make([]model.Result, 0)
 	page := 1
 
-	for {
+	for page <= shodanDNSMaxPages {
 		params := endpoint.Query()
 
 		params.Set("key", apiKey)
@@ -126,7 +128,11 @@ func (p *ShodanDNSProvider) Query(
 		}
 
 		if !response.More {
-			break
+			return results, nil
+		}
+
+		if page == shodanDNSMaxPages {
+			return nil, &model.ProviderError{Reason: "pagination_limit_reached"}
 		}
 
 		page++

@@ -54,12 +54,14 @@ Examples
 Input
 
     probator accepts subdominer schema version 1 JSONL records.  It uses only
-    schema_version, domain, and url. Other fields, such as evidence, are ignored
-    and not retained.
+    schema_version, domain, and url.  Other fields, such as evidence, are
+    ignored and not retained.
 
-    Hostnames are lowercased and have a trailing DNS root dot removed before
-    deduplication.  Each unique normalized hostname is probed once.  Duplicate
-    records with conflicting normalized domain values are rejected.
+    Domains and hostnames are validated and normalized.  Each hostname must be
+    the domain itself or a subdomain of the declared domain.  Hostnames are
+    lowercased and have a trailing DNS root dot removed before deduplication.
+    Each unique normalized hostname is probed once.  Duplicate records with
+    conflicting normalized domain values are rejected.
 
     Malformed records, missing required fields, unsupported schema versions, and
     conflicting domains are fatal input errors.  Blank lines are ignored.

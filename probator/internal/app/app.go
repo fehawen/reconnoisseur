@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/fehawen/reconnoisseur/internal/shared/logging"
-	"github.com/fehawen/reconnoisseur/internal/shared/model"
+	"github.com/fehawen/reconnoisseur/internal/shared/normalize"
 	"github.com/fehawen/reconnoisseur/probator/internal/probe"
 )
 
@@ -37,10 +37,14 @@ func DefaultConfig() Config {
 }
 
 type prober interface {
-	Probe(context.Context, string) (probe.Result, error)
+	Probe(context.Context, string, string) (probe.Result, error)
 }
 
-type inputRecord = model.Result
+type inputRecord struct {
+	SchemaVersion int    `json:"schema_version"`
+	Domain        string `json:"domain"`
+	URL           string `json:"url"`
+}
 
 type outputRecord struct {
 	SchemaVersion int          `json:"schema_version"`
@@ -65,6 +69,10 @@ type logEntry struct {
 }
 
 func Run(ctx context.Context, input io.Reader, output io.Writer, cfg Config) error {
+	if ctx == nil {
+		return errors.New("context is nil")
+	}
+
 	if input == nil {
 		return errors.New("input is nil")
 	}
@@ -155,7 +163,7 @@ func run(
 					return
 				}
 
-				result, probeErr := p.Probe(ctx, job.hostname)
+				result, probeErr := p.Probe(ctx, normalizeName(job.domain), job.hostname)
 
 				if probeErr != nil {
 					select {
@@ -293,8 +301,15 @@ func readInventory(ctx context.Context, input io.Reader) ([]target, error) {
 					return nil, fmt.Errorf("input line %d: missing hostname", lineNumber)
 				}
 
-				hostname := normalizeName(record.URL)
-				domain := normalizeName(record.Domain)
+				domain, err := normalize.Domain(record.Domain, "")
+				if err != nil {
+					return nil, fmt.Errorf("input line %d: invalid domain: %w", lineNumber, err)
+				}
+
+				hostname, _, err := normalize.Hostname(domain, record.URL)
+				if err != nil {
+					return nil, fmt.Errorf("input line %d: invalid hostname: %w", lineNumber, err)
+				}
 
 				if index, exists := unique[hostname]; exists {
 					if normalizeName(targets[index].domain) != domain {

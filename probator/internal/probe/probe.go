@@ -136,12 +136,17 @@ func newProberWithTLS(cfg Config, resolver ipResolver, tlsConfig *tls.Config) (*
 	}, nil
 }
 
-func (p *Prober) Probe(ctx context.Context, hostname string) (Result, error) {
+func (p *Prober) Probe(ctx context.Context, scopeDomain, hostname string) (Result, error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
 
+	scopeDomain = normalizeDNSName(scopeDomain)
 	hostname = normalizeHostname(hostname)
+	if !hostnameInScope(hostname, scopeDomain) {
+		return skippedResult("out_of_scope_hostname"), nil
+	}
+
 	if strings.HasPrefix(hostname, "*.") {
 		return skippedResult("wildcard_hostname"), nil
 	}
@@ -173,6 +178,7 @@ func (p *Prober) Probe(ctx context.Context, hostname string) (Result, error) {
 
 	client, cleanup, err := newHTTPClient(transportConfig{
 		initialHostname:  hostname,
+		scopeDomain:      scopeDomain,
 		initialAddresses: addresses,
 		resolver:         p.resolver,
 		dnsTimeout:       p.config.DNSTimeout,
