@@ -54,7 +54,7 @@ Options
         Read target domains from a file, one domain per line.
 
     -log <path>
-        Write provider logs to the specified file.
+        Write logs to the specified file.
         Defaults to ./urleech.log.
 
     -silent
