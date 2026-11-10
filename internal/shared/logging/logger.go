@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -45,7 +46,7 @@ func New(path string, silent bool) (*Logger, error) {
 	return &Logger{file: f}, nil
 }
 
-func (l *Logger) LogProvider(provider, domain string, status model.ProviderStatus, count int, reason string) error {
+func (l *Logger) Write(v any) error {
 	if l == nil {
 		return errors.New("logger is nil")
 	}
@@ -61,52 +62,20 @@ func (l *Logger) LogProvider(provider, domain string, status model.ProviderStatu
 		return errors.New("logger is closed")
 	}
 
-	provider = strings.TrimSpace(provider)
-	domain = strings.TrimSpace(domain)
-	reason = strings.TrimSpace(reason)
-
-	if provider == "" {
-		return errors.New("provider is empty")
-	}
-
-	if domain == "" {
-		return errors.New("domain is empty")
-	}
-
-	switch status {
-	case model.StatusSuccess:
-		if count < 1 || reason != "" {
-			return errors.New("invalid successful provider status")
-		}
-	case model.StatusEmpty:
-		if count != 0 || reason != "" {
-			return errors.New("invalid empty provider status")
-		}
-	case model.StatusError, model.StatusSkipped:
-		if count != 0 || reason == "" {
-			return errors.New("invalid error or skipped provider status")
-		}
-	default:
-		return fmt.Errorf("invalid provider status %q", status)
-	}
-
-	entry := Entry{
-		Timestamp: time.Now().UTC(),
-		Provider:  provider,
-		Domain:    domain,
-		Status:    status,
-		Results:   count,
-		Reason:    reason,
-	}
-
-	data, err := json.Marshal(entry)
+	data, err := json.Marshal(v)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal log entry: %w", err)
 	}
 
 	data = append(data, '\n')
-	if _, err := l.file.Write(data); err != nil {
+
+	n, err := l.file.Write(data)
+	if err != nil {
 		return fmt.Errorf("write log: %w", err)
+	}
+
+	if n != len(data) {
+		return io.ErrShortWrite
 	}
 
 	return nil

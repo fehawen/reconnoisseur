@@ -9,6 +9,7 @@ import (
 	"github.com/fehawen/reconnoisseur/internal/shared/model"
 )
 
+const UserAgent = "reconnoisseur/1.0"
 const maxResponseBytes = 32 << 20
 
 func Get(
@@ -30,7 +31,7 @@ func Get(
 	}
 
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "reconnoisseur/0.1.0")
+	req.Header.Set("User-Agent", UserAgent)
 
 	for key, values := range headers {
 		for _, value := range values {
